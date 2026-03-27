@@ -1,11 +1,39 @@
-<script setup lang="ts"></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div class="app-container">
+    <header class="header">header</header>
+    <div class="container">
+      <aside class="aside">aside</aside>
+      <main class="main">main</main>
+    </div>
+  </div>
 </template>
 
-<style scoped></style>
+<script setup lang="ts"></script>
+
+<style scoped lang="less">
+.app-container {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+
+  .header {
+    padding: 20px;
+  }
+
+  .container {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    overflow: auto;
+
+    .aside {
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .main {
+      overflow-y: auto;
+      padding: 20px;
+    }
+  }
+}
+</style>
