@@ -1,6 +1,8 @@
 <template>
   <div class="app-container">
-    <header class="header">header</header>
+    <header class="header">
+      <search-box />
+    </header>
     <div class="container">
       <aside class="aside">aside</aside>
       <main class="main">main</main>
@@ -8,7 +10,9 @@
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { SearchBox } from "@/views";
+</script>
 
 <style scoped lang="less">
 .app-container {
@@ -17,7 +21,7 @@
   height: 100%;
 
   .header {
-    padding: 20px;
+    padding: 100px 0;
   }
 
   .container {
