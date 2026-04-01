@@ -12,3 +12,6 @@ app.use(createPinia());
 app.use(router);
 
 app.mount("#app");
+
+const bgUrl = `https://bing.img.run/rand.php?t=${Date.now()}`;
+document.body.style.backgroundImage = `url(${bgUrl})`;

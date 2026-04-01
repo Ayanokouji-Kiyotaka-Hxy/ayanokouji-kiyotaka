@@ -7,9 +7,21 @@ body {
   width: 100vw;
   min-width: 100%;
   background: #f0f2f5;
+  background-size: cover;
+  /* 图片覆盖整个视口，保持比例 */
+  background-position: center;
+  /* 居中显示 */
+  background-repeat: no-repeat;
+  /* 不重复 */
+  background-attachment: fixed;
+  /* 固定背景，滚动时图片不动（可选） */
+  transition: background-image 0.3s ease;
+  /* 图片切换时的平滑过渡 */
 }
 #app {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  background-color: #fff4;
+  backdrop-filter: blur(1px);
 }
