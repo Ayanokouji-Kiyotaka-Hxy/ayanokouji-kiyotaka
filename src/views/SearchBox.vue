@@ -12,19 +12,20 @@
       </div>
 
       <!-- 输入框容器 -->
-      <div class="input-wrapper">
+      <div ref="inputRef" class="input-wrapper">
         <!-- 输入框 -->
         <input
           ref="inputRef"
           type="text"
-          v-model="keyWords"
+          v-model="keyword"
           placeholder="输入搜索内容"
           class="search-input"
-          @keyup.enter="handleSearch"
+          @focus="showSearchHistory = true"
+          @keyup.enter="handleSearch(keyword)"
         />
         <!-- 清空按钮 -->
         <button
-          v-if="keyWords.length > 0"
+          v-if="keyword.length > 0"
           class="clear-btn"
           @click="clearInput"
           aria-label="清空输入"
@@ -34,13 +35,13 @@
       </div>
     </div>
 
-    <!-- 下拉列表 -->
+    <!-- 下拉搜索引擎列表 -->
     <transition>
-      <div ref="engineDropdownRef" v-if="choosingEngine" class="dropdown">
+      <div ref="engineDropdownRef" v-if="showSearchEngine" class="engines">
         <div
           v-for="engine in engines"
           :key="engine.value"
-          class="dropdown-item"
+          class="engine-item"
           @click="selectEngine(engine)"
         >
           <ak-icon :size="25">
@@ -51,8 +52,24 @@
       </div>
     </transition>
 
+    <!-- 下拉搜索记录列表 -->
     <transition>
-      <div ref="searchDropdownRef" v-if="searchingResult"></div>
+      <div
+        ref="historyDropdownRef"
+        v-if="showSearchHistory && histories.length > 0"
+        class="histories"
+      >
+        <div v-for="history in histories" :key="history.id" class="history-item">
+          <span class="keyword" @click="handleSearch(history.keyword)">{{ history.keyword }}</span>
+          <button class="delete" @click.stop="deleteHistory(history.id)">×</button>
+        </div>
+        <button class="clear" @click="clearHistory">清空历史记录</button>
+      </div>
+    </transition>
+
+    <!-- 下拉搜索建议列表 -->
+    <transition>
+      <div ref="suggestDropdownRef" v-if="showSearchSuggest"></div>
     </transition>
   </div>
 </template>
@@ -61,6 +78,8 @@
 import { markRaw, nextTick, ref, useTemplateRef, type Component } from "vue";
 import { akIcon } from "@/components";
 import { BingIcon, BaiduIcon } from "@/assets/icons";
+import { useSearchHistoryStore } from "@/pinia/stores";
+import { storeToRefs } from "pinia";
 
 interface Engine {
   label: string;
@@ -69,9 +88,14 @@ interface Engine {
   component: Component;
 }
 
+const searchHistoryStore = useSearchHistoryStore();
+const { histories } = storeToRefs(searchHistoryStore);
+
 const selectorRef = useTemplateRef("selectorRef");
+
 const engineDropdownRef = useTemplateRef("engineDropdownRef");
-const searchDropdownRef = useTemplateRef("searchDropdownRef");
+const historyDropdownRef = useTemplateRef("historyDropdownRef");
+const suggestDropdownRef = useTemplateRef("suggestDropdownRef");
 
 const inputRef = useTemplateRef("inputRef");
 
@@ -100,35 +124,73 @@ const engines: Engine[] = [
 ];
 
 // 选择引擎中
-const choosingEngine = ref(false);
+const showSearchEngine = ref(false);
+// 搜索记录中
+const showSearchHistory = ref(false);
 // 搜索结果中
-const searchingResult = ref(false);
+const showSearchSuggest = ref(false);
 
-const keyWords = ref("");
+// 搜索关键字
+const keyword = ref("");
 
 // 展开折叠引擎选择
 const toggleChoosingEngine = () => {
-  choosingEngine.value = !choosingEngine.value;
+  showSearchEngine.value = !showSearchEngine.value;
 };
 // 选择引擎
 const selectEngine = (engine: Engine) => {
   selectedEngine.value = engine;
-  choosingEngine.value = false;
+  showSearchEngine.value = false;
 };
+
+// 定义所有下拉框的配置
+const dropdownConfigs = [
+  {
+    show: showSearchEngine, // 控制该下拉框显示的 ref
+    dropdownRef: engineDropdownRef, // 下拉框容器的 ref
+    triggerRef: selectorRef, // 触发该下拉框的元素的 ref（点击此元素时不关闭）
+  },
+  {
+    show: showSearchHistory,
+    dropdownRef: historyDropdownRef,
+    triggerRef: inputRef,
+  },
+  {
+    show: showSearchSuggest,
+    dropdownRef: suggestDropdownRef,
+    triggerRef: inputRef, // 搜索建议通常也由输入框触发
+  },
+];
+
 // 关闭下拉框
 const handleClick = (event: MouseEvent) => {
-  if (
-    !engineDropdownRef.value?.contains(event.target as Node) &&
-    !selectorRef.value?.contains(event.target as Node)
-  )
-    choosingEngine.value = false;
+  const target = event.target as Node;
+  for (const config of dropdownConfigs) {
+    if (!config.show.value) continue;
 
-  if (!searchDropdownRef.value?.contains(event.target as Node)) searchingResult.value = false;
+    const isInsideDropdown = config.dropdownRef.value?.contains(target);
+    const isInsideTrigger = config.triggerRef.value?.contains(target);
+
+    // 如果点击位置既不在下拉框内也不在触发元素内，则关闭该下拉框
+    if (!isInsideDropdown && !isInsideTrigger) config.show.value = false;
+  }
+};
+
+// 清空历史记录
+const clearHistory = () => {
+  searchHistoryStore.clearHistory();
+  showSearchHistory.value = false;
+};
+
+// 删除单条历史
+const deleteHistory = (id: string) => {
+  searchHistoryStore.deleteHistory(id);
+  if (histories.value.length === 0) showSearchHistory.value = false;
 };
 
 // 清空输入
 const clearInput = () => {
-  keyWords.value = "";
+  keyword.value = "";
 
   nextTick(() => {
     inputRef.value?.focus();
@@ -136,10 +198,13 @@ const clearInput = () => {
 };
 
 // 搜索
-const handleSearch = () => {
-  if (!keyWords.value.trim()) return;
-  const url = selectedEngine.value.url + encodeURIComponent(keyWords.value);
+const handleSearch = (_keyword: string) => {
+  if (!_keyword.trim()) return;
+  const url = selectedEngine.value.url + encodeURIComponent(_keyword);
   window.open(url, "_blank");
+
+  searchHistoryStore.addHistory(_keyword);
+  keyword.value = _keyword;
 };
 
 document.addEventListener("click", handleClick);
@@ -168,8 +233,9 @@ document.addEventListener("click", handleClick);
     border: 1px solid #dcdfe6;
 
     &:focus-within {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+      // transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+      border: 1px solid #fff;
     }
 
     .engine-selector {
@@ -248,13 +314,14 @@ document.addEventListener("click", handleClick);
     }
   }
 
-  .dropdown {
+  .engines {
     width: 500px;
     position: absolute;
     top: 100%;
     left: calc(50% - 250px);
     margin-top: 8px;
-    background: #ffffff;
+    background: #ffffffaa;
+    backdrop-filter: blur(12px);
     border-radius: 15px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
@@ -265,13 +332,13 @@ document.addEventListener("click", handleClick);
     justify-content: flex-start;
     padding: 20px;
 
-    .dropdown-item {
+    .engine-item {
       display: flex;
       align-items: center;
       flex-direction: column;
       justify-content: center;
-      font-size: 10px;
-      padding: 10px;
+      font-size: 12px;
+      padding: 10px 15px;
       border-radius: 20%;
       gap: 2px;
       cursor: pointer;
@@ -280,6 +347,77 @@ document.addEventListener("click", handleClick);
 
       &:hover {
         background: #ebedf0;
+      }
+    }
+  }
+
+  .histories {
+    width: 500px;
+    position: absolute;
+    top: 100%;
+    left: calc(50% - 250px);
+    margin-top: 8px;
+    background: #ffffffaa;
+    backdrop-filter: blur(12px);
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 10px 20px;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 16px;
+
+      &:hover {
+        background-color: #ffffffcc;
+      }
+
+      .keyword {
+        flex: 1;
+      }
+
+      .delete {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 20px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 25px;
+        height: 25px;
+
+        &:hover {
+          color: #f56c6c;
+        }
+      }
+    }
+
+    .clear {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      color: #3b82f6;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 15px;
+      transition: background 0.2s;
+
+      &:hover {
+        background-color: #ffffffcc;
       }
     }
   }
