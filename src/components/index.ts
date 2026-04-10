@@ -1,3 +1,4 @@
 import akIcon from "@/components/AkIcon.vue";
+import AkModal from "./AkModal.vue";
 
-export { akIcon };
+export { akIcon, AkModal };

@@ -5,13 +5,15 @@
     </header>
     <div class="container">
       <aside class="aside">aside</aside>
-      <main class="main">main</main>
+      <main class="main">
+        <DraggableGrid />
+      </main>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { SearchBox } from "@/views";
+import { DraggableGrid, SearchBox } from "@/views";
 </script>
 
 <style scoped lang="less">

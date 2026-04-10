@@ -1,3 +1,4 @@
+import DraggableGrid from "./DraggableGrid.vue";
 import SearchBox from "./SearchBox.vue";
 
-export { SearchBox };
+export { DraggableGrid, SearchBox };

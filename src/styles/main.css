@@ -25,3 +25,19 @@ body {
   background-color: #fff3;
   backdrop-filter: blur(1px);
 }
+#app .widget-container {
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+  height: 95%;
+  width: 95%;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#app .widget-container:hover {
+  background-color: #fafafa22;
+}
